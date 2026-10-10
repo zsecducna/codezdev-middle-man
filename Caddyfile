@@ -39,7 +39,6 @@
 
         reverse_proxy https://llmgate.app {
             header_up Host llmgate.app
-            header_up X-Real-IP {remote_host}
 
             # Disable upstream gzip so Caddy can find & replace text strings
             header_up Accept-Encoding identity
