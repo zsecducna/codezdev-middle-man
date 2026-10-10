@@ -1,10 +1,35 @@
 :{$PORT:8080} {
-    # Match /api, /api/*, /v1, and /v1/*
+    # Match allowed client origins
+    @cors_origins {
+        header Origin https://codezdev-shop.uk
+        header Origin https://dev.codezdev-shop.uk
+    }
+
+    # Match preflight OPTIONS requests from allowed origins
+    @cors_preflight {
+        method OPTIONS
+        header Origin https://codezdev-shop.uk
+        header Origin https://dev.codezdev-shop.uk
+    }
+
+    # Attach CORS headers to responses for allowed origins
+    header @cors_origins {
+        Access-Control-Allow-Origin "{header.Origin}"
+        Access-Control-Allow-Methods "GET, POST, OPTIONS"
+        Access-Control-Allow-Headers "Authorization, Content-Type, Accept, X-Requested-With"
+        Access-Control-Max-Age "86400"
+        Vary "Origin"
+    }
+
+    # Answer OPTIONS preflight immediately with 204 No Content
+    respond @cors_preflight 204
+
+    # Match allowed API endpoints
     @allowed {
         path /api /api/* /v1 /v1/*
     }
 
-    # Forward matching paths to llmgate
+    # Forward matching API endpoints to llmgate
     handle @allowed {
         reverse_proxy https://llmgate.app {
             header_up Host llmgate.app
@@ -17,7 +42,7 @@
         }
     }
 
-    # Reject everything else with a 404 Not Found
+    # Reject everything else
     handle {
         respond "Not Found" 404
     }
