@@ -1,18 +1,21 @@
+{
+    # Tell Caddy when to execute response replacement
+    order replace after encode
+}
+
 :{$PORT:8080} {
-    # Match allowed client origins
+    # Match allowed client origins for CORS
     @cors_origins {
         header Origin https://codezdev-shop.uk
         header Origin https://dev.codezdev-shop.uk
     }
 
-    # Match preflight OPTIONS requests from allowed origins
     @cors_preflight {
         method OPTIONS
         header Origin https://codezdev-shop.uk
         header Origin https://dev.codezdev-shop.uk
     }
 
-    # Attach CORS headers to responses for allowed origins
     header @cors_origins {
         Access-Control-Allow-Origin "{header.Origin}"
         Access-Control-Allow-Methods "GET, POST, OPTIONS"
@@ -21,19 +24,29 @@
         Vary "Origin"
     }
 
-    # Answer OPTIONS preflight immediately with 204 No Content
     respond @cors_preflight 204
 
-    # Match allowed API endpoints
+    # Match allowed API & media endpoints
     @allowed {
         path /api /api/* /v1 /v1/* /img /img/* /videos /video /videos/* /video/*
     }
 
-    # Forward matching API endpoints to llmgate
     handle @allowed {
+        # Replace target domain in response body
+        replace stream {
+            "llmgate.app" "api.codezdev-shop.uk"
+        }
+
         reverse_proxy https://llmgate.app {
             header_up Host llmgate.app
             header_up X-Real-IP {remote_host}
+
+            # Disable upstream gzip so Caddy can find & replace text strings
+            header_up Accept-Encoding identity
+
+            # Rewrite upstream domain in response headers (e.g. redirect URLs)
+            header_down Location "llmgate.app" "api.codezdev-shop.uk"
+
             flush_interval -1
             transport http {
                 response_header_timeout 3600s
