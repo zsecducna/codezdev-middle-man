@@ -26,7 +26,7 @@
 
     # Match allowed API endpoints
     @allowed {
-        path /api /api/* /v1 /v1/*
+        path /api /api/* /v1 /v1/* /img /img/* /videos /video /videos/* /video/*
     }
 
     # Forward matching API endpoints to llmgate
