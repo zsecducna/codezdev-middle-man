@@ -1,14 +1,6 @@
 {
     # Tell Caddy when to execute response replacement
     order replace after encode
-    servers {
-        protocols h1 h2 h3
-    }
-    # Log only errors to stdout to keep memory & logging quota minimal
-    log default {
-        output stdout
-        level ERROR
-    }
 }
 
 :{$PORT:8080} {
@@ -55,18 +47,15 @@
             header_down Location "llmgate.app" "api.codezdev-shop.uk"
 
             flush_interval -1
-
             transport http {
                 response_header_timeout 3600s
-                dial_timeout 10s
+                dial_timeout 30s
                 keep_alive {
                     enabled true
                     max_idle_conns 100
                     max_idle_conns_per_host 64
                     idle_timeout 90s
                 }
-                # HTTP/2 multiplexing to llmgate
-                versions 1.1 2
             }
         }
     }
