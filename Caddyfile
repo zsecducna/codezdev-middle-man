@@ -1,66 +1,84 @@
+
 {
-    # Tell Caddy when to execute response replacement
+    # Register the replace-response plugin's directive.
     order replace after encode
+
+    # Allow time for load balancer draining before shutdown begins.
+    shutdown_delay 30s
+
+    # Wait up to 60 seconds for active requests to finish.
+    grace_period 60s
 }
 
 :{$PORT:8080} {
-    # Match allowed client origins for CORS
+    # Allow requests from these client origins.
     @cors_origins {
         header Origin https://codezdev-shop.uk
         header Origin https://dev.codezdev-shop.uk
     }
 
+    # Match preflight requests for allowed origins and paths.
     @cors_preflight {
         method OPTIONS
         header Origin https://codezdev-shop.uk
         header Origin https://dev.codezdev-shop.uk
+        path /api /api/* /v1 /v1/* /img /img/* /videos /video /videos/* /video/*
     }
 
+    # CORS response headers.
     header @cors_origins {
-        Access-Control-Allow-Origin "{header.Origin}"
+        Access-Control-Allow-Origin {header.Origin}
         Access-Control-Allow-Methods "GET, POST, OPTIONS"
         Access-Control-Allow-Headers "Authorization, Content-Type, Accept, X-Requested-With"
         Access-Control-Max-Age "86400"
-        Vary "Origin"
+        +Vary Origin
+        defer
     }
 
-    respond @cors_preflight 204
+    # Respond to valid preflight requests without contacting upstream.
+    handle @cors_preflight {
+        respond 204
+    }
 
-    # Match allowed API & media endpoints
+    # Only proxy requests to the approved endpoint paths.
     @allowed {
         path /api /api/* /v1 /v1/* /img /img/* /videos /video /videos/* /video/*
     }
 
     handle @allowed {
-        # Replace target domain in response body
+        # Replace upstream domain references in response bodies.
         replace stream {
             "llmgate.app" "api.codezdev-shop.uk"
         }
 
         reverse_proxy https://llmgate.app {
+            # Allow upgraded streams to remain open during config reloads.
+            stream_close_delay 60s
+
+            # Set the upstream host.
             header_up Host llmgate.app
 
-            # Disable upstream gzip so Caddy can find & replace text strings
+            # Request uncompressed responses for body replacement.
             header_up Accept-Encoding identity
 
-            # Rewrite upstream domain in response headers (e.g. redirect URLs)
-            header_down Location "llmgate.app" "api.codezdev-shop.uk"
+            # Rewrite upstream redirect URLs.
+            header_down Location "llmgate[.]app" "api.codezdev-shop.uk"
 
+            # Improve latency for streaming responses.
             flush_interval -1
+
             transport http {
-                response_header_timeout 3600s
                 dial_timeout 30s
-                keep_alive {
-                    enabled true
-                    max_idle_conns 100
-                    max_idle_conns_per_host 64
-                    idle_timeout 90s
-                }
+                response_header_timeout 3600s
+
+                keepalive 90s
+                keepalive_idle_conns 100
+                keepalive_idle_conns_per_host 64
             }
         }
     }
 
-    # Reject everything else
+    # Reject all other paths.
     handle {
         respond "Not Found" 404
     }
