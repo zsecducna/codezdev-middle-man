@@ -1,0 +1,23 @@
+#!/bin/sh
+set -eu
+
+CONFIG="Caddyfile"
+
+if ! command -v caddy >/dev/null 2>&1; then
+    echo "ERROR: caddy is not installed or not in PATH." >&2
+    exit 1
+fi
+
+if [ ! -f "$CONFIG" ]; then
+    echo "ERROR: $CONFIG not found." >&2
+    exit 1
+fi
+
+echo "Validating $CONFIG..."
+
+if ! caddy validate --config "$CONFIG"; then
+    echo "ERROR: Caddyfile validation failed. Commit aborted." >&2
+    exit 1
+fi
+
+echo "Caddyfile validation passed."
