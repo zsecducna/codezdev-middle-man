@@ -55,9 +55,6 @@
 
             flush_interval -1
 
-            # Give in-flight streams time to complete before shutting down an instance
-            stream_close_delay 60s
-
             transport http {
                 response_header_timeout 3600s
                 dial_timeout 10s
