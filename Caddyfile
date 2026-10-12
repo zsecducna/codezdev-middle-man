@@ -5,7 +5,8 @@
         protocols h1 h2 h3
     }
     # Log only errors to stdout to keep memory & logging quota minimal
-    log {
+    log default {
+        output stdout
         level ERROR
     }
 }
