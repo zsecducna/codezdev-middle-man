@@ -43,13 +43,17 @@
             # Disable upstream gzip so Caddy can find & replace text strings
             header_up Accept-Encoding identity
 
-            # Rewrite upstream domain in response headers (e.g. redirect URLs)
-            header_down Location "llmgate.app" "api.codezdev-shop.uk"
+            # Rewrite upstream redirect URLs.
+            header_down Location "llmgate[.]app" "api.codezdev-shop.uk"
 
             flush_interval -1
             transport http {
                 response_header_timeout 3600s
                 dial_timeout 30s
+
+                keepalive 90s
+                keepalive_idle_conns 100
+                keepalive_idle_conns_per_host 64
             }
         }
     }
